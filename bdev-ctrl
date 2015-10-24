@@ -1,0 +1,404 @@
+#!/bin/bash
+
+# Customize these, or leave them as-is.
+BDEV_NAMED_MASTER=master
+BDEV_NAMED_SLAVE=slave
+BDEV_UNNAMED_MOUNT=admin
+
+# Run only as root.
+if [ `id -u` -ne 0 ]; then
+    echo "Run only as root."
+    exit 1
+fi
+
+# Define colors and functions for output of messages.
+red='\033[0;31m'
+green='\033[0;32m'
+yellow='\033[0;33m'
+magenta='\033[0;35m'
+reset='\033[0m'
+
+message () {
+    echo -e "${green}$1${reset}"
+}
+warning () {
+    echo -e "${yellow}$1${reset}"
+}
+error () {
+    echo -e "${red}$1${reset}"
+}
+output () {
+    echo -e "${magenta}$1${reset}"
+}
+
+# Common environment variable validation.
+if [ -z $BDEV_EXCLUDE_DEVICES ]; then
+    BDEV_EXCLUDE_DEVICES='sda sdb'
+fi
+
+check_excluded_devices () {
+    for item in $BDEV_EXCLUDE_DEVICES; do
+        if [ $item == $backupdevicename ]; then
+            error "Configuration excludes use of $backupdevicename!"
+            exit 1
+        fi
+    done
+}
+
+check_bdev_common () {
+    backupdevicename=$1
+
+    if [ "X${backupdevicename}" == "X" ]; then
+        error "Need a backup device."
+        exit 1;
+    fi
+
+    if [ -z $BDEV_KEYFILES_PATH ]; then
+        error "Environment variable BDEV_KEYFILES_PATH must be set."
+        exit 1
+    fi
+
+    check_excluded_devices
+}
+
+crypt_mapper () {
+    backupdevice=$1
+    keyname=$2
+    # TODO: Set the cipher to an environment variable?
+    cryptsetup_args="--verbose"
+
+    # If keyname supplied then use a keyfile.
+    if [ ! -z $keyname ]; then
+        cryptname=${keyname}_crypt
+        keyfile="${BDEV_KEYFILES_PATH}/${keyname}.keyfile"
+        cipherfile="${BDEV_KEYFILES_PATH}/${keyname}.cipher"
+
+        if [ ! -f $keyfile ]; then
+            error "No keyfile: $keyfile"
+            exit 1
+        fi
+
+        if [ ! -f $cipherfile ]; then
+            error "No cipherfile: $cipherfile"
+            exit 1
+        fi
+
+        # Read cipher from file.
+        cipher=`cat $cipherfile`
+
+        message "Using keyfile: $keyfile"
+        message "Using cipher: $cipher"
+
+        cryptsetup_args="${cryptsetup_args} --key-file ${keyfile}"
+        cryptsetup_args="${cryptsetup_args} --cipher $cipher"
+    else
+        # TODO: total hack. need to iron this out.
+        cryptname=admin_crypt
+
+        # Default cipher for unnamed device. We've nowhere to find it.
+        cryptsetup_args="${cryptsetup_args} --cipher aes-cbc-essiv:sha256"
+    fi
+
+    cryptdevice=/dev/mapper/${cryptname}
+
+    if [ -e ${cryptdevice} ]; then
+        warning "${backupdevice} already attached to ${cryptname}"
+        exit 1;
+    fi
+
+    message "Using cryptdevice=${cryptdevice}"
+
+    # Create the encrypted mapping to the device.
+    cryptsetup $cryptsetup_args create $cryptname $backupdevice
+
+    # TODO: error?
+}
+
+crypt_unmapper () {
+    cryptdevice=$1
+
+    if [ -e $cryptdevice ]; then
+        message "${cryptdevice} present. removing..."
+        cryptsetup --verbose remove $cryptdevice
+    fi
+
+    # TODO: Check success
+    if [ -f $cryptdevice ]; then
+        error "Failed to detach mapped device $cryptdevice"
+        exit 1
+    fi
+
+    message "Successfully detached mapped device $cryptdevice"
+}
+
+bdev_attach () {
+    backupdevicename=$1
+    backupdevice=$2
+    keyname=$3
+
+    check_bdev_common $backupdevicename
+
+    crypt_mapper $backupdevice $keyname
+}
+
+# Attaches and mounts unnamed device prepared to standard specification.
+# Unnamed means there is no keyfile and that the passphrase must be supplied
+# on the command line.
+unnamed_bdev_up () {
+    backupdevicename=$1
+    backupdevice=/dev/$1
+    backupdir=/$2
+
+    check_bdev_common $backupdevicename
+
+    # Check to see if mounted. Do not map if there is something on our
+    # mountpoint.
+    /bin/mountpoint $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        message "Ready to mount $backupdir"
+        crypt_mapper $backupdevice
+
+        # XXX: This command relies on $cryptdevice global being set in
+        # crypt_mapper()
+        kpartx -a $cryptdevice
+
+        # Mount only if partition is present. Otherwise, we didn't get the
+        # right passphrase to decrypt.
+        #
+        # XXX: This approach reflects a specific setup specification. E.g. The
+        # device must be created with a single partition after encryption.
+        # TODO: README?
+        if [ -e "${cryptdevice}1" ]; then
+            mount "${cryptdevice}1" $backupdir
+            rc=$?
+
+            # This is unlikely to fail.
+            if [ "$rc" -ne 0 ]; then
+                cryptsetup remove $cryptname
+                error "Mount failed. Cause unknown."
+                exit 1
+            fi
+        else
+            cryptsetup remove $cryptname
+            warning "No partition to mount. Did you type the wrong passphrase?"
+            exit 1
+        fi
+    fi
+
+    check_mount
+}
+
+named_bdev_up () {
+    # TODO: construct backupdevice here and remove the redundant arg.
+    backupdevicename=$1
+    backupdevice=$2
+    keyname=$3
+    backupdir=/$4
+
+    check_bdev_common $backupdevicename
+
+    message "Attaching ${keyname} and mounting on ${backupdir}."
+
+    # Check to see if mounted. Do not map if there is something on our
+    # mountpoint.
+    /bin/mountpoint $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        message "Ready to mount $backupdir"
+        crypt_mapper $backupdevice $keyname
+
+        # XXX: This command relies on $cryptdevice global being set in
+        # crypt_mapper()
+        mount $cryptdevice $backupdir
+    fi
+
+    check_mount
+}
+
+unnamed_bdev_down () {
+    mountpoint=$1
+    backupdir=/$mountpoint
+    cryptname="${mountpoint}_crypt"
+    cryptdevice=/dev/mapper/$cryptname
+
+    # Check to see if mounted
+    /bin/mountpoint -q $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        warning "$backupdir not mounted"
+
+        if [ -e $cryptdevice ]; then
+            message "${cryptdevice} present. removing..."
+            kpartx -d $cryptdevice
+            cryptsetup remove $cryptdevice
+        fi
+
+        exit 0
+    fi
+
+    umount $backupdir
+
+    # Check again--make sure it's not mounted to avoid trouble
+    /bin/mountpoint -q $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        message "${backupdir} unmounted."
+    else
+        error "${backupdir} not unmounted. failed."
+        exit 1
+    fi
+
+    if [ -e $cryptdevice ]; then
+        message "${cryptdevice} present. removing..."
+        kpartx -d $cryptdevice
+        cryptsetup remove $cryptdevice
+    fi
+
+    # confirm
+    if [ -e $cryptdevice ]; then
+        message "${keyname} not attached to ${cryptname}. success."
+    fi
+}
+
+named_bdev_down () {
+    keyname=$1
+    cryptname=${keyname}_crypt;
+    cryptdevice=/dev/mapper/$cryptname;
+
+    # Have $cryptdevice. Use it to find the mountpoint.
+    backupdir=$(find_mount_dir $cryptdevice)
+    message "Found mountpoint $backupdir"
+
+    # Check to see if mounted.
+    /bin/mountpoint $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        warning "$backupdir not mounted."
+        crypt_unmapper $cryptdevice
+        exit 0
+    fi
+
+    umount $backupdir
+
+    # Check to see if mounted.
+    /bin/mountpoint $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        message "${backupdir} unmounted."
+    else
+        error "${backupdir} not unmounted. Failed."
+        exit 1
+    fi
+
+    if [ -e $cryptdevice ]; then
+        crypt_unmapper $cryptdevice
+    fi
+}
+
+# Check again--'cuz we may have entered the wrong encryption key. No filesystem
+# will be recognized and no mount will be performed if the key is incorrect.
+check_mount () {
+    /bin/mountpoint $backupdir
+    rc=$?
+
+    if [ "$rc" -eq 1 ]; then
+        error "Mount failed. Your encryption key is probably incorrect."
+
+        # Attempt to remove mapping. We should have $cryptdevice global set at
+        # this point.
+        crypt_unmapper $cryptdevice
+
+        exit 1
+    fi
+}
+
+# Takes $cryptdevice as argument and returns a mountpoint.
+find_mount_dir () {
+    cryptdevice=$1
+    local backupdir=`/bin/mount | grep $cryptdevice | awk '{print $3}'`
+    message $backupdir
+}
+
+usage () {
+    echo "Usage: `basename $0` [command] [blockdevicename] [bdevname]         "
+    echo "  e.g.                                                              "
+    echo "     % $0 ${BDEV_NAMED_MASTER} sdc bd-0                             "
+    echo "     % $0 ${BDEV_NAMED_SLAVE} sdc bd-0                              "
+    echo "     % $0 ${BDEV_UNNAMED_MOUNT} sdc                                 "
+    echo "     % $0 down bd-0                                                 "
+    echo "     % $0 attach sdc                                                "
+    echo "     % $0 detach sdc                                                "
+    echo
+    echo "  Command:                                                          "
+    echo "    ${BDEV_NAMED_MASTER}: Attach and mount device on /${BDEV_NAMED_MASTER}."
+    echo
+    echo "    ${BDEV_NAMED_SLAVE}: Attach and mount device on /${BDEV_NAMED_SLAVE}."
+    echo
+    echo "    ${BDEV_UNNAMED_MOUNT}: Attach and mount device on /${BDEV_UNNAMED_MOUNT}."
+    echo
+    echo "    down: Unmount and detach device."
+    echo
+    echo "    attach: Attach device."
+    echo
+    echo "    detach: Detach device."
+    echo
+}
+
+# This is required for all variations.
+cmd=$1
+
+##
+# Parse command.
+##
+case $cmd in
+    "${BDEV_NAMED_MASTER}"|"${BDEV_NAMED_SLAVE}")
+        message "Mount and attach device $keyname";
+        backupdevicename=$2;
+        backupdevice=/dev/${2};
+        keyname=$3;
+        named_bdev_up $backupdevicename $backupdevice $keyname $cmd;;
+    "${BDEV_UNNAMED_MOUNT}")
+        message "Attach and mount device $backupdevicename";
+        backupdevicename=$2;
+        if [ "X$backupdevicename" == "X" ]; then
+            error "Missing device name."
+            exit 1
+        fi
+        unnamed_bdev_up $backupdevicename $cmd;;
+    "down")
+        # Check for arg $2. If present, use keyname. Otherwise, use `admin'.
+        message "Unmount and detach device $keyname";
+        keyname=$2;
+        if [ "X$keyname" == "X" ]; then
+            unnamed_bdev_down $BDEV_UNNAMED_MOUNT
+        else
+            named_bdev_down $keyname;
+        fi;;
+    "attach")
+        message "Attach device $keyname";
+        backupdevicename=$2;
+        backupdevice=/dev/${2};
+        keyname=$3;
+        # TODO: attach_key or attach_nokey
+        bdev_attach $backupdevicename $backupdevice $keyname;;
+    "detach")
+        message "Detach device $keyname";
+        keyname=$2;
+        cryptname=${keyname}_crypt;
+        cryptdevice=/dev/mapper/$cryptname;
+        # TODO: detach_key or detach_nokey
+        crypt_unmapper $cryptdevice;;
+    *)
+        usage
+        exit 1;;
+esac
+
+exit 0
+
