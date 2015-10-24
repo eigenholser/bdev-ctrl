@@ -323,7 +323,8 @@ check_mount () {
 find_mount_dir () {
     cryptdevice=$1
     local backupdir=`/bin/mount | grep $cryptdevice | awk '{print $3}'`
-    message $backupdir
+    # XXX: Don't forget--must remain echo.
+    echo $backupdir
 }
 
 usage () {
