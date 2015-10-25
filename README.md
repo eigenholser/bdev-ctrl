@@ -93,15 +93,28 @@ to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
 
 ### Prepare the device
 
+#### Named Device
+
 Since the device is initially without a filesystem, it must first be attached.
-Then the filesystem may be created.
+Then the filesystem may be created. For a named device:
 
   ``bdev-ctrl attach sdc bd-0``
 
-This will create the mapped device ``/dev/mapper/bd-0_crypt``. This is what
-should be used for filesystem creation:
+This will create the mapped device ``/dev/mapper/bd-0_crypt``. At this point,
+you must decide whether or not to create a partition or use the entire device.
+For this purpose, it is fine to dedicate the entire device. ``bdev-ctrl`` will
+look for ``/dev/mapper/bd-0_crypt1`` also so you may create a single partition
+spanning the entire device. If you create multiple partitions, only the first
+will be used.
 
-    ``mke2fs -j -t ext4 /dev/mapper/bd-0_crypt``
+Here is how to create the partition::
+
+    parted /dev/mapper/bd-0_crypt mklabel gpt
+    parted /dev/mapper/bd-0_crypt mkpart primary ext2 0 100%
+
+Create the filesystem:
+
+    ``mke2fs -j -t ext4 /dev/mapper/bd-0_crypt1``
 
 At this point, the device mapping may be removed:
 
@@ -123,6 +136,23 @@ This may take several hours. When the device runs out of space, just delete
 
 Initialization is complete.
 
+#### Unnamed Device
+
+For an unnamed device, the process is identical to the instructions for a
+named device above. The only difference is in how ``bdev-ctrl`` is used to
+attach::
+
+    bdev-ctrl attach sdc
+
+Then the device will be mapped to ``/dev/mapper/admin_crypt``. The remaining
+instructions are the same.
+
+### Flash Memory Devices and Wear Leveling
+
+Flash memory has limited write cycles. Keep this in mind as you fill the
+entire device with high-entropy data. There are other considerations here that
+are beyond the scope of this README.
+
 ## TODO
 
-``fsck`` prior to mount.
+Partitions.
