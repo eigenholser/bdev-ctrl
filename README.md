@@ -19,7 +19,7 @@ Attach and detach modes are used only for initialization and troubleshooting.
 
 For the impatient, do this:
 
-    ``sudo make install``
+    sudo make install
 
 That will install the ``bdev-ctrl`` shell script to ``/sbin``.
 
@@ -33,29 +33,35 @@ are also required.
 ### Environment Variables
 
 ``BDEV_EXCLUDE_DEVICES``
-Space delimited list of devices that will not be considered as valid for
-use. This is a safety mechanism.
 
-``BDEV_EXCLUDE_DEVICES="sda sdb"``
+Space delimited list of devices that will not be considered as valid for
+use. This is a safety mechanism:
+
+    BDEV_EXCLUDE_DEVICES="sda sdb"
 
 ``BDEV_KEYFILES_PATH``
+
 Path to keyfiles.
 
-``BDEV_KEYFILES_PATH="/path/to/keyfiles"``
+    BDEV_KEYFILES_PATH="/path/to/keyfiles"
 
 ``BDEV_NAMED_MASTER``
+
 Mountpoint and command used to mount master device.
 
-``BDEV_NAMED_MASTER="master"``
+    BDEV_NAMED_MASTER="master"
 
 ``BDEV_NAMED_SLAVE``
+
 Mountpoint and command used to mount slave device.
 
-``BDEV_NAMED_SLAVE="slave"``
+    BDEV_NAMED_SLAVE="slave"
 
 ``BDEV_UNNAMED_MOUNT``
+
 Command and mountpoint used to mount unnamed device. Unnamed means that there
-is no corresponding keyfile. The passphrase must be entered by hand.
+is no corresponding keyfile. The passphrase must be entered by hand. My
+convention is to use ``admin``.
 
 ### Mountpoints
 
@@ -98,7 +104,7 @@ to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
 Since the device is initially without a filesystem, it must first be attached.
 Then the filesystem may be created. For a named device:
 
-  ``bdev-ctrl attach sdc bd-0``
+  bdev-ctrl attach sdc bd-0
 
 This will create the mapped device ``/dev/mapper/bd-0_crypt``. At this point,
 you must decide whether or not to create a partition or use the entire device.
@@ -107,29 +113,29 @@ look for ``/dev/mapper/bd-0_crypt1`` also so you may create a single partition
 spanning the entire device. If you create multiple partitions, only the first
 will be used.
 
-Here is how to create the partition::
+Here is how to create the partition:
 
     parted /dev/mapper/bd-0_crypt mklabel gpt
     parted /dev/mapper/bd-0_crypt mkpart primary ext2 0 100%
 
 Create the filesystem:
 
-    ``mke2fs -j -t ext4 /dev/mapper/bd-0_crypt1``
+    mke2fs -j -t ext4 /dev/mapper/bd-0_crypt1
 
 At this point, the device mapping may be removed:
 
-    ``bdev-ctrl detach bd-0``
+    bdev-ctrl detach bd-0
 
 Then, bring up the device as usual:
 
-    ``bdev-ctrl master sdc bd-0``
+    bdev-ctrl master sdc bd-0
 
 The device will now be mounted on ``/master``.
 
 The final step in device initialization is optional. This step fills the
 entire device with high-entropy data.
 
-    ``dd if=/dev/zero of=/master/bigfile.dat bs=1M``
+    dd if=/dev/zero of=/master/bigfile.dat bs=1M
 
 This may take several hours. When the device runs out of space, just delete
 ``/master/bigfile.dat``.
@@ -140,7 +146,7 @@ Initialization is complete.
 
 For an unnamed device, the process is identical to the instructions for a
 named device above. The only difference is in how ``bdev-ctrl`` is used to
-attach::
+attach:
 
     bdev-ctrl attach sdc
 
