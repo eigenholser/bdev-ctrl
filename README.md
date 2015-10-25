@@ -90,9 +90,9 @@ A reasonable cipher is ``aes-cbc-essiv:sha256``. Create file
 the cipher. See ``cryptsetup --help`` for a list of compiled in cipher
 parameters.
 
-The keyfile may be generated like this::
+The keyfile may be generated like this:
 
-    ``dd if=/dev/random of=$BDEV_KEYFILES_PATH/devname.keyfile bs=1K count=2``
+    dd if=/dev/random of=$BDEV_KEYFILES_PATH/devname.keyfile bs=1K count=2
 
 Since this uses ``/dev/random``, you may need to exercise your system for awhile
 to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
@@ -104,7 +104,7 @@ to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
 Since the device is initially without a filesystem, it must first be attached.
 Then the filesystem may be created. For a named device:
 
-  bdev-ctrl attach sdc bd-0
+    bdev-ctrl attach sdc bd-0
 
 This will create the mapped device ``/dev/mapper/bd-0_crypt``. At this point,
 you must decide whether or not to create a partition or use the entire device.
@@ -159,6 +159,3 @@ Flash memory has limited write cycles. Keep this in mind as you fill the
 entire device with high-entropy data. There are other considerations here that
 are beyond the scope of this README.
 
-## TODO
-
-Partitions.
