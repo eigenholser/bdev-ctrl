@@ -92,8 +92,8 @@ crypt_mapper () {
         cryptsetup_args="${cryptsetup_args} --key-file ${keyfile}"
         cryptsetup_args="${cryptsetup_args} --cipher $cipher"
     else
-        # TODO: total hack. need to iron this out.
-        cryptname=admin_crypt
+        # TODO: Crusty, need to iron this out.
+        cryptname=${BDEV_UNNAMED_MOUNT}_crypt
 
         # Default cipher for unnamed device. We've nowhere to find it.
         cryptsetup_args="${cryptsetup_args} --cipher aes-cbc-essiv:sha256"
@@ -119,6 +119,7 @@ crypt_unmapper () {
 
     if [ -e $cryptdevice ]; then
         message "${cryptdevice} present. removing..."
+        kpartx -d $cryptdevice
         cryptsetup --verbose remove $cryptdevice
     fi
 
@@ -170,18 +171,22 @@ unnamed_bdev_up () {
         # XXX: This approach reflects a specific setup specification. E.g. The
         # device must be created with a single partition after encryption.
         # TODO: README?
+        # TODO: Would be neat to combine this section for named and unnamed.
         if [ -e "${cryptdevice}1" ]; then
-            mount "${cryptdevice}1" $backupdir
-            rc=$?
+            # fsck the device prior to mounting. Mount only if good fsck.
+            fsck "${cryptdevice}1"
+            if [ "$?" -eq 0 ]; then
+                mount "${cryptdevice}1" $backupdir
+                rc=$?
 
-            # This is unlikely to fail.
-            if [ "$rc" -ne 0 ]; then
-                cryptsetup remove $cryptname
-                error "Mount failed. Cause unknown."
-                exit 1
+                if [ "$rc" -ne 0 ]; then
+                    crypt_unmapper $cryptdevice
+                    error "Mount failed. Cause unknown."
+                    exit 1
+                fi
             fi
         else
-            cryptsetup remove $cryptname
+            crypt_unmapper $cryptdevice
             warning "No partition to mount. Did you type the wrong passphrase?"
             exit 1
         fi
@@ -210,9 +215,27 @@ named_bdev_up () {
         message "Ready to mount $backupdir"
         crypt_mapper $backupdevice $keyname
 
+        # TODO: Would be neat to combine this section for named and unnamed.
         # XXX: This command relies on $cryptdevice global being set in
         # crypt_mapper()
-        mount $cryptdevice $backupdir
+        # XXX: This accomodates the practice of not creating a partition and
+        # instead, dedicating the device.
+        if [ -e "${cryptdevice}1" ]; then
+            cryptpartition="${cryptdevice}1"
+        else
+            cryptpartition=$cryptdevice
+        fi
+
+        fsck "${cryptpartition}"
+        if [ "$?" -eq 0 ]; then
+            mount $cryptpartition $backupdir
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+                crypt_unmapper $cryptdevice
+                error "Mount failed. Cause unknown."
+                exit 1
+            fi
+        fi
     fi
 
     check_mount
@@ -375,11 +398,12 @@ case $cmd in
         unnamed_bdev_up $backupdevicename $cmd;;
     "down")
         # Check for arg $2. If present, use keyname. Otherwise, use `admin'.
-        message "Unmount and detach device $keyname";
         keyname=$2;
         if [ "X$keyname" == "X" ]; then
+            message "Unmount unnamed device mounted on ${BDEV_UNNAMED_MOUNT}."
             unnamed_bdev_down $BDEV_UNNAMED_MOUNT
         else
+            message "Unmount and detach named device $keyname";
             named_bdev_down $keyname;
         fi;;
     "attach")
