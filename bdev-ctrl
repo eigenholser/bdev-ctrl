@@ -106,10 +106,11 @@ crypt_mapper () {
         exit 1;
     fi
 
-    message "Using cryptdevice=${cryptdevice}"
+    output "Using cryptdevice=${cryptdevice}"
 
     # Create the encrypted mapping to the device.
     cryptsetup $cryptsetup_args create $cryptname $backupdevice
+    kpartx -a $cryptdevice
 
     # TODO: error?
 }
@@ -228,6 +229,8 @@ named_bdev_up () {
             cryptpartition=$cryptdevice
         fi
 
+        output "Using cryptpartition=${cryptpartition}"
+
         fsck "${cryptpartition}"
         if [ "$?" -eq 0 ]; then
             mount $cryptpartition $backupdir
@@ -257,7 +260,7 @@ unnamed_bdev_down () {
         warning "$backupdir not mounted"
 
         if [ -e $cryptdevice ]; then
-            message "${cryptdevice} present. removing..."
+            output "${cryptdevice} present. removing..."
             kpartx -d $cryptdevice
             cryptsetup remove $cryptdevice
         fi
@@ -297,7 +300,7 @@ named_bdev_down () {
 
     # Have $cryptdevice. Use it to find the mountpoint.
     backupdir=$(find_mount_dir $cryptdevice)
-    message "Found mountpoint $backupdir"
+    output "Found mountpoint $backupdir"
 
     # Check to see if mounted.
     /bin/mountpoint $backupdir
@@ -385,13 +388,13 @@ cmd=$1
 ##
 case $cmd in
     "${BDEV_NAMED_MASTER}"|"${BDEV_NAMED_SLAVE}")
-        message "Mount and attach device $keyname";
+        output "Mount and attach device $keyname";
         backupdevicename=$2;
         backupdevice=/dev/${2};
         keyname=$3;
         named_bdev_up $backupdevicename $backupdevice $keyname $cmd;;
     "${BDEV_UNNAMED_MOUNT}")
-        message "Attach and mount device $backupdevicename";
+        output "Attach and mount device $backupdevicename";
         backupdevicename=$2;
         if [ "X$backupdevicename" == "X" ]; then
             error "Missing device name."
@@ -402,10 +405,10 @@ case $cmd in
         # Check for arg $2. If present, use keyname. Otherwise, use `admin'.
         keyname=$2;
         if [ "X$keyname" == "X" ]; then
-            message "Unmount unnamed device mounted on /${BDEV_UNNAMED_MOUNT}.";
+            output "Unmount unnamed device mounted on /${BDEV_UNNAMED_MOUNT}.";
             unnamed_bdev_down $BDEV_UNNAMED_MOUNT;
         else
-            message "Unmount and detach named device $keyname";
+            output "Unmount and detach named device $keyname";
             named_bdev_down $keyname;
         fi;;
     "attach")
@@ -415,16 +418,16 @@ case $cmd in
         if [ "X$keyname" == "X" ]; then
             bdev_attach $backupdevicename $backupdevice;
         else
-            message "Attach device $keyname";
+            output "Attach device $keyname";
             bdev_attach $backupdevicename $backupdevice $keyname;
         fi;;
     "detach")
         keyname=$2;
         if [ "X${keyname}" == "X" ]; then
-            message "Detach unnamed device.";
+            output "Detach unnamed device.";
             cryptname=${BDEV_UNNAMED_MOUNT}_crypt;
         else
-            message "Detach named device $keyname";
+            output "Detach named device $keyname";
             cryptname=${keyname}_crypt;
         fi
         cryptdevice=/dev/mapper/$cryptname;
