@@ -1,4 +1,4 @@
-# Backup Encrypted Device Control
+# Encrypted Backup Device Control
 
 Manage encrypted external devices with plausable deniability for Linux backups.
 
