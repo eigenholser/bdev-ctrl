@@ -140,6 +140,8 @@ bdev_attach () {
     check_bdev_common $backupdevicename
 
     crypt_mapper $backupdevice $keyname
+
+    kpartx -a $cryptdevice
 }
 
 # Attaches and mounts unnamed device prepared to standard specification.
@@ -400,25 +402,32 @@ case $cmd in
         # Check for arg $2. If present, use keyname. Otherwise, use `admin'.
         keyname=$2;
         if [ "X$keyname" == "X" ]; then
-            message "Unmount unnamed device mounted on ${BDEV_UNNAMED_MOUNT}."
-            unnamed_bdev_down $BDEV_UNNAMED_MOUNT
+            message "Unmount unnamed device mounted on /${BDEV_UNNAMED_MOUNT}.";
+            unnamed_bdev_down $BDEV_UNNAMED_MOUNT;
         else
             message "Unmount and detach named device $keyname";
             named_bdev_down $keyname;
         fi;;
     "attach")
-        message "Attach device $keyname";
         backupdevicename=$2;
         backupdevice=/dev/${2};
         keyname=$3;
-        # TODO: attach_key or attach_nokey
-        bdev_attach $backupdevicename $backupdevice $keyname;;
+        if [ "X$keyname" == "X" ]; then
+            bdev_attach $backupdevicename $backupdevice;
+        else
+            message "Attach device $keyname";
+            bdev_attach $backupdevicename $backupdevice $keyname;
+        fi;;
     "detach")
-        message "Detach device $keyname";
         keyname=$2;
-        cryptname=${keyname}_crypt;
+        if [ "X${keyname}" == "X" ]; then
+            message "Detach unnamed device.";
+            cryptname=${BDEV_UNNAMED_MOUNT}_crypt;
+        else
+            message "Detach named device $keyname";
+            cryptname=${keyname}_crypt;
+        fi
         cryptdevice=/dev/mapper/$cryptname;
-        # TODO: detach_key or detach_nokey
         crypt_unmapper $cryptdevice;;
     *)
         usage
