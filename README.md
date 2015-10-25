@@ -92,7 +92,7 @@ parameters.
 
 The keyfile may be generated like this:
 
-    dd if=/dev/random of=$BDEV_KEYFILES_PATH/devname.keyfile bs=1K count=2
+    dd if=/dev/random of=$BDEV_KEYFILES_PATH/devname.keyfile bs=1k count=8
 
 Since this uses ``/dev/random``, you may need to exercise your system for awhile
 to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
@@ -116,7 +116,7 @@ will be used.
 Here is how to create the partition:
 
     parted /dev/mapper/bd-0_crypt mklabel gpt
-    parted /dev/mapper/bd-0_crypt mkpart primary ext2 0 100%
+    parted /dev/mapper/bd-0_crypt mkpart primary ext2 0% 100%
 
 Create the filesystem:
 
