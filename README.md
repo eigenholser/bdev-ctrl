@@ -99,22 +99,32 @@ to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
 
 ### Prepare the device
 
+Preparing the device is slightly different depending on whether it is a named
+or unnamed device. In the examples that follow, the example device `/dev/xyz`
+will be used. This was chosen to to protect the impatient from themselves.
+Really it will be something like `/dev/sdc` or something.
+
 #### Common
 
-The partition table must be initialized. First, remove any existing partition
-table by overwriting:
+Whether or not the device is named or unnamed, you must remove any existing
+partition table.
 
-    dd if=/dev/zero of=/dev/sdc bs=1M count=100
+But first, be sure your device is unmounted. Then overwrite the device
+partition table:
+
+    dd if=/dev/zero of=/dev/xyz bs=1M count=100
 
 This will overwrite the first 100MB of your device with zeros. Be very certain
 that you specify the correct device here!
+
+Unplug the USB cable and then plug it in again.
 
 #### Named Device
 
 Since the device is initially without a filesystem, it must first be attached.
 Then the filesystem may be created. For a named device:
 
-    bdev-ctrl attach sdc bd-0
+    bdev-ctrl attach xyz bd-0
 
 This will create the mapped device ``/dev/mapper/bd-0_crypt``. At this point,
 you must decide whether or not to create a partition or use the entire device.
@@ -138,7 +148,7 @@ At this point, the device mapping may be removed:
 
 Then, bring up the device as usual:
 
-    bdev-ctrl master sdc bd-0
+    bdev-ctrl master xyz bd-0
 
 The device will now be mounted on ``/master``.
 
@@ -158,7 +168,7 @@ For an unnamed device, the process is identical to the instructions for a
 named device above. The only difference is in how ``bdev-ctrl`` is used to
 attach:
 
-    bdev-ctrl attach sdc
+    bdev-ctrl attach xyz
 
 Then the device will be mapped to ``/dev/mapper/admin_crypt``. The remaining
 instructions are the same.
