@@ -92,12 +92,22 @@ parameters.
 
 The keyfile may be generated like this:
 
-    dd if=/dev/random of=$BDEV_KEYFILES_PATH/devname.keyfile bs=1k count=8
+    dd if=/dev/random of=$BDEV_KEYFILES_PATH/{named_device}.keyfile bs=1k count=8
 
 Since this uses ``/dev/random``, you may need to exercise your system for awhile
 to generate entropy. Alternatively, for faster generation, use ``/dev/urandom``.
 
 ### Prepare the device
+
+#### Common
+
+The partition table must be initialized. First, remove any existing partition
+table by overwriting:
+
+    dd if=/dev/zero of=/dev/sdc bs=1M count=100
+
+This will overwrite the first 100MB of your device with zeros. Be very certain
+that you specify the correct device here!
 
 #### Named Device
 
@@ -109,9 +119,9 @@ Then the filesystem may be created. For a named device:
 This will create the mapped device ``/dev/mapper/bd-0_crypt``. At this point,
 you must decide whether or not to create a partition or use the entire device.
 For this purpose, it is fine to dedicate the entire device. ``bdev-ctrl`` will
-look for ``/dev/mapper/bd-0_crypt1`` also so you may create a single partition
-spanning the entire device. If you create multiple partitions, only the first
-will be used.
+look for ``/dev/mapper/bd-0_crypt1`` also and use that if present. You may
+create a single partition spanning the entire device. If you create multiple
+partitions, only the first will be used.
 
 Here is how to create the partition:
 
