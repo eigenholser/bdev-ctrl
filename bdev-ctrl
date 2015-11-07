@@ -300,6 +300,10 @@ named_bdev_down () {
 
     # Have $cryptdevice. Use it to find the mountpoint.
     backupdir=$(find_mount_dir $cryptdevice)
+    if [ "X${backupdir}" == "X" ]; then
+        error "${cryptdevice} is not mounted."
+        exit 1
+    fi
     output "Found mountpoint $backupdir"
 
     # Check to see if mounted.
