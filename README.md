@@ -1,6 +1,19 @@
 # Encrypted Backup Device Control
 
 Manage encrypted external devices with plausable deniability for Linux backups.
+From the ``cryptsetup`` man page:
+
+    cryptsetup is used to conveniently setup dm-crypt managed device-mapper
+    mappings. These include plain dm-crypt volumes and LUKS volumes. The
+    difference is that LUKS uses a metadata header and can hence offer more
+    features than  plain  dm-crypt. On the other hand, the header is visible
+    and vulnerable to damage.
+
+The key words there are "the header is visible." Using ``dm-crypt`` is less
+flexible, but otherwise the device appears as simply high-entropy data. In and
+of itself, that looks suspicious. But, a LUKS header unambiguously declares
+the presence of encrypted data.
+
 
 ## The Backup Strategy
 
