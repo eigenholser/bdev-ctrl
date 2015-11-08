@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# This is really a quick and dirty solution. Ideally this would check to see
+# that both endpoints are mounted, display a confirmation prompt, etc... This
+# relies on having both endpoints correctly mounted as truecrypt1 (source) and
+# the current directory being the destination.
+#
+# For now it keeps the process repeatable as long as I do the right thing.
+
+. /sbin/bdev-functions
+
+require_root
+
+# Check to see if source device is mounted.
+if [ ! -d $BACKUP_DEST ]; then
+    error "Need to mount ${BACKUP_DEST} as source."
+    exit 1
+fi
+
+# Destination!
+restore_dir=`pwd`
+cd /$BDEV_NAMED_SLAVE
+
+# This at least offers a bit of safety.
+if [ "$?" -eq "0" ]; then
+    rsync -a -v \
+        --delete \
+        --exclude lost+found \
+        --progress \
+        --human-readable \
+        /$BDEV_NAMED_MASTER/ .
+    cd $restore_dir
+fi
+
+# Just so we know when it completed.
+date

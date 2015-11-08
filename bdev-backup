@@ -1,0 +1,75 @@
+#!/bin/bash
+
+. /sbin/bdev-functions
+
+backup_one () {
+    # This shell script intended to take top-level directories. Keep it simple.
+    backupdir=$1
+    if [ -z $backupdir ]; then
+        error "Backup directory required."
+        return
+    fi
+
+    excludes_file="${BACKUP_HOME}/excludes-${backupdir}.txt"
+
+    if [ ! -e $excludes_file ]; then
+        error "Missing exclude file $excludes_file"
+        exit 1
+    fi
+
+    if [ ! -d $BACKUP_DEST ]; then
+        error "Destination $BACKUP_DEST does not exist!"
+        exit 1
+    fi
+
+    output "Changing directory: $BACKUP_DEST"
+
+    restore_dir=`pwd`
+    cd $BACKUP_DEST
+
+    rsync_cmd="/usr/bin/rsync"
+    rsync_opts="-a -v --delete --progress --human-readable --delete-excluded --dry-run"
+    rsync_opts="${rsync_opts} --exclude-from=${excludes_file}"
+
+    backup_cmd="${rsync_cmd} ${rsync_opts} /${backupdir} ."
+
+    output "${backup_cmd}"
+    $backup_cmd
+
+    cd $restore_dir
+}
+
+# Run only as root.
+require_root
+
+# Command line option
+backup_mode=$1
+
+if [ "${backup_mode}" = "all" ]; then
+    output $backup_mode
+    BACKUP_ROOTS="${BACKUP_DIRS}"
+else
+    BACKUP_ROOTS="${BACKUP_DIRS_NOVM}"
+fi
+
+# Check to see if $BDEV_NAMED_MASTER  mounted. This is important!
+mount | grep -q $BDEV_NAMED_MASTER
+rc=$?
+if [ $rc = 1 ]; then
+    error "Master backup device not mounted on /$BDEV_NAMED_MASTER!"
+    exit 1
+fi
+
+for backup_root in $BACKUP_ROOTS; do
+    # $BACKUP_DIR_VM defined and directory exists.
+    if [ -z "$backup_root" ] | [ ! -d /$backup_root ]; then
+        error "Backup directory not defined or does not exist: [$backup_root]"
+        exit 1
+    fi
+
+    output "==> backup_one $backup_root"
+    backup_one $backup_root
+done
+
+# So we know when long running jobs complete.
+date
