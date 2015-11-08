@@ -43,37 +43,72 @@ backup_one () {
     cd $restore_dir
 }
 
+backup_admin () {
+    timestamp=`date "+%Y%m%d-%H%M%S"`
+
+    while IFS=':' read -ra DIRS; do
+        for admin_dir in "${DIRS[@]}"; do
+            echo $admin_dir
+            # Remove leading / then map / ==> - and \S ==> _
+            munged_admin_dir=`echo $admin_dir | \
+                sed -e 's#/##' -e 's#/#-#g' -e 's#\\\\##g' -e 's/ /_/g'`
+            echo $munged_admin_dir
+            tar_file="${timestamp}_${munged_admin_dir}.tar.gz"
+            tar_cmd="tar zcvf ${tar_file} ${admin_dir}"
+            message "$tar_cmd"
+            restore_dir=`pwd`
+            cd /$BDEV_UNNAMED_MOUNT
+            "$tar_cmd"
+            cd $restore_dir
+        done
+    done <<< "$BACKUP_ADMIN_DIRS"
+}
+
+backup_master () {
+    BACKUP_ROOTS=$1
+
+    # Check to see if $BDEV_NAMED_MASTER  mounted. This is important!
+    mount | grep -q $BDEV_NAMED_MASTER
+    rc=$?
+    if [ $rc = 1 ]; then
+        error "Master backup device not mounted on /$BDEV_NAMED_MASTER!"
+        exit 1
+    fi
+
+    while IFS=':' read -ra DIRS; do
+        for backup_root in "${DIRS[@]}"; do
+            # $BACKUP_DIR_VM defined and directory exists.
+            # Strip leading /
+            backup_root=`echo $backup_root | sed -e 's#/##'`
+            if [ -z "$backup_root" ] | [ ! -d /$backup_root ]; then
+                error "Backup directory not defined or does not exist: [$backup_root]"
+                exit 1
+            fi
+
+            output "==> backup_one $backup_root"
+            backup_one $backup_root
+        done
+    done <<< "$BACKUP_ROOTS"
+}
+
 # Run only as root.
 require_root
 
 # Command line option
 backup_mode=$1
 
-if [ "${backup_mode}" = "all" ]; then
-    output $backup_mode
-    BACKUP_ROOTS="${BACKUP_DIRS}"
-else
-    BACKUP_ROOTS="${BACKUP_DIRS_NOVM}"
-fi
-
-# Check to see if $BDEV_NAMED_MASTER  mounted. This is important!
-mount | grep -q $BDEV_NAMED_MASTER
-rc=$?
-if [ $rc = 1 ]; then
-    error "Master backup device not mounted on /$BDEV_NAMED_MASTER!"
-    exit 1
-fi
-
-for backup_root in $BACKUP_ROOTS; do
-    # $BACKUP_DIR_VM defined and directory exists.
-    if [ -z "$backup_root" ] | [ ! -d /$backup_root ]; then
-        error "Backup directory not defined or does not exist: [$backup_root]"
-        exit 1
-    fi
-
-    output "==> backup_one $backup_root"
-    backup_one $backup_root
-done
+case $backup_mode in
+    "admin")
+        output $backup_mode;
+        backup_admin;;
+    "all")
+        output $backup_mode;
+        backup_master "${BACKUP_DIRS}";;
+    *)
+        output "novm";
+        backup_master "${BACKUP_DIRS_NOVM}";;
+esac
 
 # So we know when long running jobs complete.
 date
+

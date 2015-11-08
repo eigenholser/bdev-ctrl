@@ -200,6 +200,7 @@ if they are empty. They live in BACKUP_HOME. See below.
 ## Environment Variables
 
 The environment variables generally should be set in ``root`` ``.bashrc`` file.
+Backup directory lists are colon-delimited. Spaces are tolerated.
 
 ``BDEV_TEST``
 
@@ -228,31 +229,39 @@ Path to destination of backup. This links in with ``bdev-ctrl``.
 
 ``BACKUP_DIRS_NOVM``
 
-List of backup directories without leading slash. I don't like to backup my
-virtual machines as often as other data so I distinguish between VM and non-VM
-directories. Obviously this is a simple approach where top-level directories
-constitute the happy path. More complex arrangments may be possible--but why?
+Colon-delimited list of backup directories with leading slash. I don't like to
+backup my virtual machines as often as other data so I distinguish between VM
+and non-VM directories. Obviously this is a simple approach where top-level
+directories constitute the happy path. More complex arrangments may be
+possible--but why?
 
-    export BACKUP_DIRS_NOVM="root home var etc srv"
+    export BACKUP_DIRS_NOVM="/root:/home:/var:/etc:/srv"
 
 
 ``BACKUP_DIR_VM``
 
-Virtual machines directory. When ``all`` command-line argument is passed to
-``bdev-backup`` this will be added to ``BACKUP_DIRS_NOVM``.
+Colon-delimited list of virtual machine directories. When ``all`` command-line
+argument is passed to ``bdev-backup`` this will be added to
+``BACKUP_DIRS_NOVM``.
 
-    export BACKUP_DIR_VM="vmware"
+    export BACKUP_DIR_VM="/Virtual Machines"
 
 
 ``BACKUP_DIRS``
 
 This is the full list of directories to backup when ``all`` is specified.
 
-    export BACKUP_DIRS="${BACKUP_DIRS_NOVM} ${BACKUP_DIR_VM}"
+    export BACKUP_DIRS="${BACKUP_DIRS_NOVM}:${BACKUP_DIR_VM}"
+
+``BACKUP_ADMIN_DIRS``
+
+List of directories to use as unnamed admin backup.
+
+    export BACKUP_ADMIN_DIRS='/my/admin dir1:/my/admin/dir2"
 
 ## Commands
 
-``bdev-backup`` or ``bdev-backup all``
+``bdev-backup``, ``bdev-backup all``, or ``bdev-backup admin``
 
 Backup configured directories to ``BACKUP_DEST``.
 
