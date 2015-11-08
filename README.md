@@ -254,7 +254,7 @@ This is the full list of directories to backup when ``all`` is specified.
 
 ``bdev-backup`` or ``bdev-backup all``
 
-Backup configured directories to BACKUP_DEST.
+Backup configured directories to ``BACKUP_DEST``.
 
 ``bdev-clone``
 
