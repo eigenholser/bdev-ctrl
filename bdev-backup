@@ -91,6 +91,37 @@ backup_master () {
     done <<< "$BACKUP_ROOTS"
 }
 
+backup_clone () {
+    # TODO: Check to see if source device is mounted.
+    if [ ! -d $BACKUP_DEST ]; then
+        error "Need to mount ${BACKUP_DEST} as source."
+        exit 1
+    fi
+
+    rsync_cmd="/usr/bin/rsync"
+    rsync_opts="-a -v --delete --exclude lost+found --progress"
+    rsync_opts="${rsync_opts} --human-readable"
+
+    if [ ! -z $BDEV_TEST ]; then
+        rsync_opts="${rsync_opts} --dry-run"
+    fi
+
+    backup_cmd="${rsync_cmd} ${rsync_opts} /${BDEV_NAMED_MASTER}/ ."
+
+    # Destination!
+    restore_dir=`pwd`
+    message "cd /$BDEV_NAMED_SLAVE"
+    cd /$BDEV_NAMED_SLAVE
+
+    # This at least offers a bit of safety.
+    if [ "$?" -eq "0" ]; then
+        output "${backup_cmd}"
+        $backup_cmd
+
+        cd $restore_dir
+    fi
+}
+
 # Run only as root.
 require_root
 
@@ -104,11 +135,15 @@ case $backup_mode in
     "all")
         output $backup_mode;
         backup_master "${BACKUP_DIRS}";;
+    "clone")
+        output $backup_mode;
+        backup_clone;;
     *)
         output "novm";
         backup_master "${BACKUP_DIRS_NOVM}";;
 esac
 
 # So we know when long running jobs complete.
-date
+echo
+message "Completed: `date`"
 

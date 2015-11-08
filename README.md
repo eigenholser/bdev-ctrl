@@ -262,11 +262,20 @@ List of directories to use as unnamed admin backup.
 
 ## Commands
 
-``bdev-backup``, ``bdev-backup all``, or ``bdev-backup admin``
+``bdev-backup``
 
-Backup configured directories to ``BACKUP_DEST``.
+Backup non virtual machine directories to ``BACKUP_DEST``.
 
-``bdev-clone``
+``bdev-backup all``
+
+Backup all directories to ``BACKUP_DEST``.
+
+
+``bdev-backup admin``
+
+Tar and Gzip configured directories to ``BDEV_UNNAMED_MOUNT``.
+
+``bdev-backup clone``
 
 Clone ``BDEV_NAMED_MASTER`` to ``BDEV_NAMED_SLAVE``.
 
