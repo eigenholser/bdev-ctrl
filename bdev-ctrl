@@ -1,37 +1,23 @@
 #!/bin/bash
 
-# Customize these, or leave them as-is.
-BDEV_NAMED_MASTER=master
-BDEV_NAMED_SLAVE=slave
-BDEV_UNNAMED_MOUNT=admin
+. /sbin/bdev-functions
 
-# Run only as root.
-if [ `id -u` -ne 0 ]; then
-    echo "Run only as root."
-    exit 1
+require_root
+
+# Environment variable validation.
+# Default these values.
+if [ -z $BDEV_NAMED_MASTER ]; then
+    BDEV_NAMED_MASTER=master
 fi
 
-# Define colors and functions for output of messages.
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-magenta='\033[0;35m'
-reset='\033[0m'
+if [ -z $BDEV_NAMED_SLAVE ]; then
+    BDEV_NAMED_SLAVE=slave
+fi
 
-message () {
-    echo -e "${green}$1${reset}"
-}
-warning () {
-    echo -e "${yellow}$1${reset}"
-}
-error () {
-    echo -e "${red}$1${reset}"
-}
-output () {
-    echo -e "${magenta}$1${reset}"
-}
+if [ -z $BDEV_UNNAMED_MOUNT ]; then
+    BDEV_UNNAMED_MOUNT=admin
+fi
 
-# Common environment variable validation.
 if [ -z $BDEV_EXCLUDE_DEVICES ]; then
     BDEV_EXCLUDE_DEVICES='sda sdb'
 fi

@@ -1,0 +1,39 @@
+
+# Define colors and functions for output of messages.
+red='\033[0;31m'
+green='\033[0;32m'
+yellow='\033[0;33m'
+magenta='\033[0;35m'
+reset='\033[0m'
+
+require_root () {
+    # Run only as root.
+    if [ `id -u` -ne 0 ]; then
+        error "Run only as root."
+        exit 1
+    fi
+}
+
+message () {
+    echo -e "${green}$1${reset}"
+}
+
+warning () {
+    echo -e "${yellow}$1${reset}"
+}
+
+error () {
+    echo -e "${red}$1${reset}"
+}
+
+output () {
+    echo -e "${magenta}$1${reset}"
+}
+
+terminate () {
+    warning "Manual interruption: got SIGINT"
+    warning "exiting..."
+    exit 1;
+}
+
+trap terminate 2
