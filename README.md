@@ -192,3 +192,71 @@ Flash memory has limited write cycles. Keep this in mind as you fill the
 entire device with high-entropy data. There are other considerations here that
 are beyond the scope of this README.
 
+# Backup Shell Scripts
+
+The shell scripts use the ``rsync`` command. Exclude files are required even
+if they are empty. They live in BACKUP_HOME. See below.
+
+## Environment Variables
+
+The environment variables generally should be set in ``root`` ``.bashrc`` file.
+
+``BDEV_TEST``
+
+If this environment variable is set, ``--dry-run`` will be added to
+``rsync_opts`` so ``rsync`` will output what it would have done but will not
+actually do it.
+
+    BDEV_TEST=1
+
+Remove this with ``unset BDEV_TEST``.
+
+    unset BDEV_TEST
+
+``BACKUP_HOME``
+
+Path to exclude files.
+
+    export BACKUP_HOME=/root/admin/backup
+
+``BACKUP_DEST``
+
+Path to destination of backup. This links in with ``bdev-ctrl``.
+
+    export BACKUP_DEST="/${BDEV_NAMED_MASTER}/`hostname -s`"
+
+
+``BACKUP_DIRS_NOVM``
+
+List of backup directories without leading slash. I don't like to backup my
+virtual machines as often as other data so I distinguish between VM and non-VM
+directories. Obviously this is a simple approach where top-level directories
+constitute the happy path. More complex arrangments may be possible--but why?
+
+    export BACKUP_DIRS_NOVM="root home var etc srv"
+
+
+``BACKUP_DIR_VM``
+
+Virtual machines directory. When ``all`` command-line argument is passed to
+``bdev-backup`` this will be added to ``BACKUP_DIRS_NOVM``.
+
+    export BACKUP_DIR_VM="vmware"
+
+
+``BACKUP_DIRS``
+
+This is the full list of directories to backup when ``all`` is specified.
+
+    export BACKUP_DIRS="${BACKUP_DIRS_NOVM} ${BACKUP_DIR_VM}"
+
+## Commands
+
+``bdev-backup``
+
+Backup configured directories to BACKUP_DEST.
+
+``bdev-clone``
+
+Clone ``BDEV_NAMED_MASTER`` to ``BDEV_NAMED_SLAVE``.
+
