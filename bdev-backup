@@ -28,8 +28,12 @@ backup_one () {
     cd $BACKUP_DEST
 
     rsync_cmd="/usr/bin/rsync"
-    rsync_opts="-a -v --delete --progress --human-readable --delete-excluded --dry-run"
+    rsync_opts="-a -v --delete --progress --human-readable --delete-excluded"
     rsync_opts="${rsync_opts} --exclude-from=${excludes_file}"
+
+    if [ ! -z $BDEV_TEST ]; then
+        rsync_opts="${rsync_opts} --dry-run"
+    fi
 
     backup_cmd="${rsync_cmd} ${rsync_opts} /${backupdir} ."
 
