@@ -58,7 +58,7 @@ backup_admin () {
             message "$tar_cmd"
             restore_dir=`pwd`
             cd /$BDEV_UNNAMED_MOUNT
-            "$tar_cmd"
+            tar zcvf $tar_file "$admin_dir"
             cd $restore_dir
         done
     done <<< "$BACKUP_ADMIN_DIRS"
