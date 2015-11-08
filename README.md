@@ -200,7 +200,8 @@ if they are empty. They live in BACKUP_HOME. See below.
 ## Environment Variables
 
 The environment variables generally should be set in ``root`` ``.bashrc`` file.
-Backup directory lists are colon-delimited. Spaces are tolerated.
+Backup directory lists are colon-delimited. Spaces are tolerated in the admin
+backup command but probably not for other modes.
 
 ``BDEV_TEST``
 
