@@ -275,12 +275,13 @@ common use case where large virtual machine backups are not desirable.
 
 ``bdev-backup all``
 
-Backup all directories to ``BACKUP_DEST``.
+Backup ``BACKUP_DIRS`` directories to ``BACKUP_DEST``.
 
 
 ``bdev-backup admin``
 
 Tar and Gzip configured directories to ``BDEV_UNNAMED_MOUNT``.
+
 
 ``bdev-backup clone``
 
