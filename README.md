@@ -264,7 +264,14 @@ List of directories to use as unnamed admin backup.
 
 ``bdev-backup``
 
-Backup non virtual machine directories to ``BACKUP_DEST``.
+Print usage instructions and exit.
+
+
+``bdev-backup novm``
+
+Backup ``BACKUP_DIRS_NOVM``  directories to ``BACKUP_DEST``. Probably the most
+common use case where large virtual machine backups are not desirable.
+
 
 ``bdev-backup all``
 
