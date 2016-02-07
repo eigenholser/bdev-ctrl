@@ -122,6 +122,25 @@ backup_clone () {
     fi
 }
 
+usage () {
+    echo "Usage: `basename $0` [command]"
+    echo "  e.g."
+    echo "     % $0 all"
+    echo "     % $0 novm"
+    echo "     % $0 clone"
+    echo "     % $0 admin"
+    echo
+    echo "  Command:"
+    echo "    all: Backup \$BACKUP_DIRS to /${BDEV_NAMED_MASTER}."
+    echo
+    echo "    novm: Backup \$BACKUP_DIRS_NOVM to /${BDEV_NAMED_MASTER}."
+    echo
+    echo "    clone: Clone /${BDEV_NAMED_MASTER} to /${BDEV_NAMED_SLAVE}."
+    echo
+    echo "    admin: Backup \$BACKUP_ADMIN_DIRS to /${BDEV_UNNAMED_MOUNT}."
+    echo
+}
+
 # Run only as root.
 require_root
 
@@ -138,9 +157,12 @@ case $backup_mode in
     "clone")
         output $backup_mode;
         backup_clone;;
-    *)
+    "novm")
         output "novm";
         backup_master "${BACKUP_DIRS_NOVM}";;
+    *)
+        usage
+        exit 0;;
 esac
 
 # So we know when long running jobs complete.
