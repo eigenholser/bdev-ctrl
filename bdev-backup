@@ -67,6 +67,11 @@ backup_admin () {
 backup_master () {
     BACKUP_ROOTS=$1
 
+    # Run pre command if set and present.
+    if [ ! -z $BACKUP_PRE_CMD ]; then
+        [ -e $BACKUP_PRE_CMD ] && sh $BACKUP_PRE_CMD
+    fi
+
     # Check to see if $BDEV_NAMED_MASTER  mounted. This is important!
     mount | grep -q $BDEV_NAMED_MASTER
     rc=$?
@@ -89,6 +94,11 @@ backup_master () {
             backup_one $backup_root
         done
     done <<< "$BACKUP_ROOTS"
+
+    # Run post command if set and present.
+    if [ ! -z $BACKUP_POST_CMD ]; then
+        [ -e $BACKUP_POST_CMD ] && sh $BACKUP_POST_CMD
+    fi
 }
 
 backup_clone () {

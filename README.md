@@ -254,11 +254,34 @@ This is the full list of directories to backup when ``all`` is specified.
 
     export BACKUP_DIRS="${BACKUP_DIRS_NOVM}:${BACKUP_DIR_VM}"
 
+
 ``BACKUP_ADMIN_DIRS``
 
 List of directories to use as unnamed admin backup.
 
     export BACKUP_ADMIN_DIRS='/my/admin dir1:/my/admin/dir2"
+
+
+``BACKUP_PRE_CMD``
+
+Path to a shell script that will be run prior to doing the backup to
+``BDEV_NAMED_MASTER``. The command will be executed with ``/bin/sh``.
+This is useful for stopping services that might interfere with a point-in-time
+backup. It may also be used for other pre-backup tasks such as possibly
+dumping database tables.
+
+    export BACKUP_PRE_CMD=/root/admin/backup/backup_pre.sh
+
+
+``BACKUP_POST_CMD``
+
+Path to a shell script that will be run after doing the backup to
+``BDEV_NAMED_MASTER``. The command will be executed with ``/bin/sh``.
+This is good for restarting system services following the backup or logging
+the time and date of the backup.
+
+    export BACKUP_POST_CMD=/root/admin/backup/backup_post.sh
+
 
 ## Commands
 
