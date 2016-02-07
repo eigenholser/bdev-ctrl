@@ -76,7 +76,7 @@ backup_master () {
     fi
 
     # Run pre command if set and present.
-    if [ ! -z "$BACKUP_PRE_CMD" ]; then
+    if [ ! -z ${BACKUP_PRE_CMD+x} ]; then
         if [ -e "$BACKUP_PRE_CMD" ]; then
             output "Invoking $BACKUP_PRE_CMD"
             /bin/sh "${BACKUP_PRE_CMD}"
@@ -99,7 +99,7 @@ backup_master () {
     done <<< "$BACKUP_ROOTS"
 
     # Run post command if set and present.
-    if [ ! -z $BACKUP_POST_CMD ]; then
+    if [ ! -z ${BACKUP_POST_CMD+x} ]; then
         if [ -e $BACKUP_POST_CMD ]; then
             output "Invoking $BACKUP_POST_CMD"
             /bin/sh $BACKUP_POST_CMD
