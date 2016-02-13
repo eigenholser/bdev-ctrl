@@ -32,9 +32,12 @@ backup_one () {
         exit 1
     fi
 
-    if [ ! -d $BACKUP_DEST ]; then
-        error "Destination $BACKUP_DEST does not exist!"
-        exit 1
+    # BACKUP_DEST must be set and exist.
+    if [ ! -z ${BACKUP_DEST+x} ]; then
+        if [ ! -d $BACKUP_DEST ]; then
+            error "Destination $BACKUP_DEST does not exist!"
+            exit 1
+        fi
     fi
 
     output "Changing directory: $BACKUP_DEST"
