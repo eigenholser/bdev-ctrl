@@ -2,6 +2,21 @@
 
 . /sbin/bdev-functions
 
+backup_master_terminate () {
+    warning "Manual interruption: got SIGINT"
+
+    # Run post command if set and present.
+    if [ ! -z ${BACKUP_POST_CMD+x} ]; then
+        if [ -e $BACKUP_POST_CMD ]; then
+            output "Invoking $BACKUP_POST_CMD"
+            /bin/sh $BACKUP_POST_CMD
+        fi
+    fi
+
+    warning "exiting..."
+    exit 1;
+}
+
 backup_one () {
     # This shell script intended to take top-level directories. Keep it simple.
     backupdir=$1
@@ -83,6 +98,9 @@ backup_master () {
         fi
     fi
 
+    # Special handler. Run BACKUP_POST_CMD on SIGINT.
+    trap backup_master_terminate 2
+
     while IFS=':' read -ra DIRS; do
         for backup_root in "${DIRS[@]}"; do
             # $BACKUP_DIR_VM defined and directory exists.
@@ -105,6 +123,9 @@ backup_master () {
             /bin/sh $BACKUP_POST_CMD
         fi
     fi
+
+    # Restore generic handler.
+    trap terminate 2
 }
 
 backup_clone () {
