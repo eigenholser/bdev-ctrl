@@ -25,13 +25,6 @@ backup_one () {
         return
     fi
 
-    excludes_file="${BACKUP_HOME}/excludes-${backupdir}.txt"
-
-    if [ ! -e $excludes_file ]; then
-        error "Missing exclude file $excludes_file"
-        exit 1
-    fi
-
     # BACKUP_DEST must be set and exist.
     if [ ! -z ${BACKUP_DEST+x} ]; then
         if [ ! -d $BACKUP_DEST ]; then
@@ -47,7 +40,12 @@ backup_one () {
 
     rsync_cmd="/usr/bin/rsync"
     rsync_opts="-a -v --delete --progress --human-readable --delete-excluded"
-    rsync_opts="${rsync_opts} --exclude-from=${excludes_file}"
+
+    excludes_file="${BACKUP_HOME}/excludes-${backupdir}.txt"
+
+    if [ -e $excludes_file ]; then
+        rsync_opts="${rsync_opts} --exclude-from=${excludes_file}"
+    fi
 
     if [ ! -z $BDEV_TEST ]; then
         rsync_opts="${rsync_opts} --dry-run"
