@@ -99,6 +99,9 @@ crypt_mapper () {
     kpartx -a $cryptdevice
 
     # TODO: error?
+
+    # Race condition on some (fast) systems solved by a short sleep.
+    sleep 0.5
 }
 
 crypt_unmapper () {
@@ -131,69 +134,13 @@ bdev_attach () {
     kpartx -a $cryptdevice
 }
 
-# Attaches and mounts unnamed device prepared to standard specification.
-# Unnamed means there is no keyfile and that the passphrase must be supplied
-# on the command line.
-unnamed_bdev_up () {
+bdev_up () {
     backupdevicename=$1
     backupdevice=/dev/$1
     backupdir=/$2
-
-    check_bdev_common $backupdevicename
-
-    # Check to see if mounted. Do not map if there is something on our
-    # mountpoint.
-    /bin/mountpoint $backupdir
-    rc=$?
-
-    if [ "$rc" -eq 1 ]; then
-        message "Ready to mount $backupdir"
-        crypt_mapper $backupdevice
-
-        # XXX: This command relies on $cryptdevice global being set in
-        # crypt_mapper()
-        kpartx -a $cryptdevice
-
-        # Mount only if partition is present. Otherwise, we didn't get the
-        # right passphrase to decrypt.
-        #
-        # XXX: This approach reflects a specific setup specification. E.g. The
-        # device must be created with a single partition after encryption.
-        # TODO: README?
-        # TODO: Would be neat to combine this section for named and unnamed.
-        if [ -e "${cryptdevice}1" ]; then
-            # fsck the device prior to mounting. Mount only if good fsck.
-            fsck "${cryptdevice}1"
-            if [ "$?" -eq 0 ]; then
-                mount "${cryptdevice}1" $backupdir
-                rc=$?
-
-                if [ "$rc" -ne 0 ]; then
-                    crypt_unmapper $cryptdevice
-                    error "Mount failed. Cause unknown."
-                    exit 1
-                fi
-            fi
-        else
-            crypt_unmapper $cryptdevice
-            warning "No partition to mount. Did you type the wrong passphrase?"
-            exit 1
-        fi
-    fi
-
-    check_mount
-}
-
-named_bdev_up () {
-    # TODO: construct backupdevice here and remove the redundant arg.
-    backupdevicename=$1
-    backupdevice=$2
     keyname=$3
-    backupdir=/$4
 
     check_bdev_common $backupdevicename
-
-    message "Attaching ${keyname} and mounting on ${backupdir}."
 
     # Check to see if mounted. Do not map if there is something on our
     # mountpoint.
@@ -202,7 +149,14 @@ named_bdev_up () {
 
     if [ "$rc" -eq 1 ]; then
         message "Ready to mount $backupdir"
-        crypt_mapper $backupdevice $keyname
+
+        if [ -z $keyname ]; then
+            message "Attaching ${BDEV_UNNAMED_MOUNT} on ${backupdevice} and mounting on ${backupdir}"
+            crypt_mapper $backupdevice
+        else
+            message "Attaching ${keyname} and mounting on ${backupdir}."
+            crypt_mapper $backupdevice $keyname
+        fi
 
         # TODO: Would be neat to combine this section for named and unnamed.
         # XXX: This command relies on $cryptdevice global being set in
@@ -232,55 +186,8 @@ named_bdev_up () {
     check_mount
 }
 
-unnamed_bdev_down () {
-    mountpoint=$1
-    backupdir=/$mountpoint
-    cryptname="${mountpoint}_crypt"
-    cryptdevice=/dev/mapper/$cryptname
-
-    # Check to see if mounted
-    /bin/mountpoint -q $backupdir
-    rc=$?
-
-    if [ "$rc" -eq 1 ]; then
-        warning "$backupdir not mounted"
-
-        if [ -e $cryptdevice ]; then
-            output "${cryptdevice} present. removing..."
-            kpartx -d $cryptdevice
-            cryptsetup remove $cryptdevice
-        fi
-
-        exit 0
-    fi
-
-    umount $backupdir
-
-    # Check again--make sure it's not mounted to avoid trouble
-    /bin/mountpoint -q $backupdir
-    rc=$?
-
-    if [ "$rc" -eq 1 ]; then
-        message "${backupdir} unmounted."
-    else
-        error "${backupdir} not unmounted. failed."
-        exit 1
-    fi
-
-    if [ -e $cryptdevice ]; then
-        message "${cryptdevice} present. removing..."
-        kpartx -d $cryptdevice
-        cryptsetup remove $cryptdevice
-    fi
-
-    # confirm
-    if [ -e $cryptdevice ]; then
-        message "${keyname} not attached to ${cryptname}. success."
-    fi
-}
-
-named_bdev_down () {
-    keyname=$1
+bdev_down () {
+    keyname=$1  # TODO: AKA bdev name? keyname is just bdev name? unnamed bdev is just BDEV_UNNAMED_MOUNT?
     cryptname=${keyname}_crypt;
     cryptdevice=/dev/mapper/$cryptname;
 
@@ -302,6 +209,7 @@ named_bdev_down () {
         exit 0
     fi
 
+    message "Unmounting device ${keyname} on ${backupdir}"
     umount $backupdir
 
     # Check to see if mounted.
@@ -380,9 +288,8 @@ case $cmd in
     "${BDEV_NAMED_MASTER}"|"${BDEV_NAMED_SLAVE}")
         output "Mount and attach device $keyname";
         backupdevicename=$2;
-        backupdevice=/dev/${2};
         keyname=$3;
-        named_bdev_up $backupdevicename $backupdevice $keyname $cmd;;
+        bdev_up $backupdevicename $cmd $keyname;;
     "${BDEV_UNNAMED_MOUNT}")
         output "Attach and mount device $backupdevicename";
         backupdevicename=$2;
@@ -390,16 +297,16 @@ case $cmd in
             error "Missing device name."
             exit 1
         fi
-        unnamed_bdev_up $backupdevicename $cmd;;
+        bdev_up $backupdevicename $cmd;;
     "down")
         # Check for arg $2. If present, use keyname. Otherwise, use `admin'.
         keyname=$2;
         if [ "X$keyname" == "X" ]; then
             output "Unmount unnamed device mounted on /${BDEV_UNNAMED_MOUNT}.";
-            unnamed_bdev_down $BDEV_UNNAMED_MOUNT;
+            bdev_down $BDEV_UNNAMED_MOUNT;
         else
             output "Unmount and detach named device $keyname";
-            named_bdev_down $keyname;
+            bdev_down $keyname;
         fi;;
     "attach")
         backupdevicename=$2;
