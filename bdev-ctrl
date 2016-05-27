@@ -18,7 +18,7 @@ if [ -z $BDEV_UNNAMED_MOUNT ]; then
     BDEV_UNNAMED_MOUNT=admin
 fi
 
-if [ -z $BDEV_EXCLUDE_DEVICES ]; then
+if [ -z "$BDEV_EXCLUDE_DEVICES" ]; then
     BDEV_EXCLUDE_DEVICES='sda sdb'
 fi
 
