@@ -286,22 +286,26 @@ cmd=$1
 ##
 case $cmd in
     "${BDEV_NAMED_MASTER}"|"${BDEV_NAMED_SLAVE}")
-        output "Mount and attach device $keyname";
         backupdevicename=$2;
         keyname=$3;
-        bdev_up $backupdevicename $cmd $keyname;;
-    "${BDEV_UNNAMED_MOUNT}")
-        output "Attach and mount device $backupdevicename";
-        backupdevicename=$2;
-        if [ "X$backupdevicename" == "X" ]; then
-            error "Missing device name."
+        if [ -z $keyname ]; then
+            error "Backup device name must be provided."
             exit 1
         fi
+        output "Mount and attach device $keyname";
+        bdev_up $backupdevicename $cmd $keyname;;
+    "${BDEV_UNNAMED_MOUNT}")
+        backupdevicename=$2;
+        if [[ -z $backupdevicename || ! -e /dev/$backupdevicename ]]; then
+            error "Missing device name or device does not exist."
+            exit 1
+        fi
+        output "Attach and mount device /dev/${backupdevicename}";
         bdev_up $backupdevicename $cmd;;
     "down")
         # Check for arg $2. If present, use keyname. Otherwise, use `admin'.
         keyname=$2;
-        if [ "X$keyname" == "X" ]; then
+        if [ -z $keyname ]; then
             output "Unmount unnamed device mounted on /${BDEV_UNNAMED_MOUNT}.";
             bdev_down $BDEV_UNNAMED_MOUNT;
         else
@@ -312,7 +316,7 @@ case $cmd in
         backupdevicename=$2;
         backupdevice=/dev/${2};
         keyname=$3;
-        if [ "X$keyname" == "X" ]; then
+        if [ -z $keyname ]; then
             bdev_attach $backupdevicename $backupdevice;
         else
             output "Attach device $keyname";
@@ -320,7 +324,7 @@ case $cmd in
         fi;;
     "detach")
         keyname=$2;
-        if [ "X${keyname}" == "X" ]; then
+        if [ -z $keyname ]; then
             output "Detach unnamed device.";
             cryptname=${BDEV_UNNAMED_MOUNT}_crypt;
         else
