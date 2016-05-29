@@ -101,7 +101,7 @@ crypt_mapper () {
     # TODO: error?
 
     # Race condition on some (fast) systems solved by a short sleep.
-    sleep 0.5
+    sleep 1
 }
 
 crypt_unmapper () {
