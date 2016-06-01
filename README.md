@@ -140,11 +140,6 @@ Initialize `dm-crypt` on the device:
 
     cryptsetup --verbose create bd-0_crypt /dev/sdX --key-file /path/to/keyfiles/bd-0.keyfile
 
-Since the device is initially without a filesystem, it must first be attached.
-Then the filesystem may be created. For a named device:
-
-    bdev-ctrl attach sdX bd-0
-
 This will create the mapped device `/dev/mapper/bd-0_crypt`. At this point,
 you must decide whether or not to create a partition or use the entire device.
 For this purpose, it is fine to dedicate the entire device. `bdev-ctrl` will
@@ -157,7 +152,7 @@ Here is how to create the partition:
     parted /dev/mapper/bd-0_crypt mklabel gpt
     parted /dev/mapper/bd-0_crypt mkpart primary ext2 0% 100%
 
-Create the filesystem:
+Since the device is initially without a filesystem, it must first be created.
 
     mke2fs -j -t ext4 /dev/mapper/bd-0_crypt1
 
@@ -165,7 +160,7 @@ At this point, the device mapping may be removed:
 
     bdev-ctrl detach bd-0
 
-Then, bring up the device as usual:
+Then, bring up the device normally:
 
     bdev-ctrl master sdX bd-0
 
@@ -192,13 +187,16 @@ Initialize `dm-crypt` on the device:
 `cryptsetup` will prompt for the passphrase.
 
 For an unnamed device, the process is identical to the instructions for a
-named device above. The only difference is in how `bdev-ctrl` is used to
-attach:
+named device above. The device will be mapped to `/dev/mapper/admin_crypt`.
+The only other difference is in how `bdev-ctrl` is used to detach:
 
-    bdev-ctrl attach sdX
+    bdev-ctrl detach sdX
 
-Then the device will be mapped to `/dev/mapper/admin_crypt`. The remaining
-instructions are the same. Create the partitions and filesystem.
+Since the device is unnamed, the name does not need to be specified to detach.
+The name `admin` is used even though the device is unnamed. The name is used
+only to refer to a keyfile. An unnamed device will prompt for a passphrase.
+
+The remaining instructions are the same. Create the partitions and filesystem.
 
 ### Flash Memory Devices and Wear Leveling
 
