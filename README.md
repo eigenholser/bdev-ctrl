@@ -56,7 +56,7 @@ use. This is a safety mechanism:
 
 Path to keyfiles.
 
-    export BDEV_KEYFILES_PATH="/path/to/keyfiles"
+    export BDEV_KEYFILES_PATH=/path/to/keyfiles
 
 `BDEV_NAMED_MASTER`
 
@@ -115,7 +115,7 @@ to generate entropy. Alternatively, for faster generation, use `/dev/urandom`.
 ### Prepare the device
 
 Preparing the device is slightly different depending on whether it is a named
-or unnamed device. In the examples that follow, the example device `/dev/xyz`
+or unnamed device. In the examples that follow, the example device `/dev/sdX`
 will be used. This was chosen to to protect the impatient from themselves.
 Really it will be something like `/dev/sdc` or something.
 
@@ -127,7 +127,7 @@ partition table.
 But first, be sure your device is unmounted. Then overwrite the device
 partition table:
 
-    dd if=/dev/zero of=/dev/xyz bs=1M count=100
+    dd if=/dev/zero of=/dev/sdX bs=1M count=100
 
 This will overwrite the first 100MB of your device with zeros. Be very certain
 that you specify the correct device here!
@@ -136,10 +136,14 @@ Unplug the USB cable and then plug it in again.
 
 #### Named Device
 
+Initialize `dm-crypt` on the device:
+
+    cryptsetup --verbose create bd-0_crypt /dev/sdX --key-file /path/to/keyfiles/bd-0.keyfile
+
 Since the device is initially without a filesystem, it must first be attached.
 Then the filesystem may be created. For a named device:
 
-    bdev-ctrl attach xyz bd-0
+    bdev-ctrl attach sdX bd-0
 
 This will create the mapped device `/dev/mapper/bd-0_crypt`. At this point,
 you must decide whether or not to create a partition or use the entire device.
@@ -181,6 +185,12 @@ Initialization is complete.
 
 #### Unnamed Device
 
+Initialize `dm-crypt` on the device:
+
+    cryptsetup --verbose create admin_crypt /dev/sdX
+
+`cryptsetup` will prompt for the passphrase.
+
 For an unnamed device, the process is identical to the instructions for a
 named device above. The only difference is in how `bdev-ctrl` is used to
 attach:
@@ -188,7 +198,7 @@ attach:
     bdev-ctrl attach sdX
 
 Then the device will be mapped to `/dev/mapper/admin_crypt`. The remaining
-instructions are the same.
+instructions are the same. Create the partitions and filesystem.
 
 ### Flash Memory Devices and Wear Leveling
 
@@ -199,7 +209,7 @@ are beyond the scope of this README.
 # Backup Shell Scripts
 
 The shell scripts use the `rsync` command. Exclude files are required even
-if they are empty. They live in BACKUP_HOME. See below.
+if they are empty. They live in `BACKUP_HOME`. See below.
 
 ## Environment Variables
 
