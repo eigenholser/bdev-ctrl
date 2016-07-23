@@ -190,7 +190,7 @@ For an unnamed device, the process is identical to the instructions for a
 named device above. The device will be mapped to `/dev/mapper/admin_crypt`.
 The only other difference is in how `bdev-ctrl` is used to detach:
 
-    bdev-ctrl detach sdX
+    bdev-ctrl detach
 
 Since the device is unnamed, the name does not need to be specified to detach.
 The name `admin` is used even though the device is unnamed. The name is used
